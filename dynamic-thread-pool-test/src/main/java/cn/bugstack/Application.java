@@ -1,5 +1,6 @@
 package cn.bugstack;
 
+import org.redisson.spring.starter.RedissonAutoConfiguration;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
@@ -10,8 +11,8 @@ import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
-@SpringBootApplication
 @Configurable
+@SpringBootApplication(exclude = {RedissonAutoConfiguration.class})
 public class Application {
 
     public static void main(String[] args) {
