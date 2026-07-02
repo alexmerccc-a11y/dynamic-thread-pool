@@ -1,1 +1,4 @@
+# Spring Boot 2.x 的自动配置入口。
+# 业务项目引入本 starter 后，Spring Boot 会读取这里的 EnableAutoConfiguration，
+# 然后把 DynamicThreadPoolAutoConfig 当作自动配置类加载进业务应用。
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=cn.bugstack.middleware.dynamic.thread.pool.sdk.config.DynamicThreadPoolAutoConfig

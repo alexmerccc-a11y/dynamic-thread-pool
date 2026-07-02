@@ -18,20 +18,35 @@ import org.springframework.context.annotation.Configuration;
 @Configurable
 public class Application {
 
+    /**
+     * 管理端启动入口。
+     *
+     * <p>启动后会提供 HTTP 接口，供前端页面查询线程池列表、查询线程池详情、发布线程池调整消息。</p>
+     */
     public static void main(String[] args) {
         SpringApplication.run(Application.class);
     }
 
+    /**
+     * 管理端自己的 Redis 客户端配置。
+     *
+     * <p>注意它和 starter 里的 dynamicThreadRedissonClient 不是同一个 Bean。
+     * 管理端不管理本地线程池，它只负责访问 Redis 中的线程池状态，并向 Redis Topic 发布调整消息。</p>
+     */
     @Configuration
     @EnableConfigurationProperties(RedisClientConfigProperties.class)
     public static class RedisClientConfig {
 
+        /**
+         * 创建 RedissonClient，让 Controller 能读写 Redis。
+         */
         @Bean("redissonClient")
         public RedissonClient redissonClient(ConfigurableApplicationContext applicationContext, RedisClientConfigProperties properties) {
             Config config = new Config();
             // 根据需要可以设定编解码器；https://github.com/redisson/redisson/wiki/4.-%E6%95%B0%E6%8D%AE%E5%BA%8F%E5%88%97%E5%8C%96
             config.setCodec(JsonJacksonCodec.INSTANCE);
 
+            // 管理端使用 redis.sdk.config.* 配置连接 Redis。
             config.useSingleServer()
                     .setAddress("redis://" + properties.getHost() + ":" + properties.getPort())
                     .setConnectionPoolSize(properties.getPoolSize())
@@ -54,15 +69,15 @@ public class Application {
     @ConfigurationProperties(prefix = "redis.sdk.config", ignoreInvalidFields = true)
     public static class RedisClientConfigProperties {
         /**
-         * host:ip
+         * Redis 主机地址。
          */
         private String host;
         /**
-         * 端口
+         * Redis 端口。
          */
         private int port;
         /**
-         * 账密
+         * Redis 密码；当前 redissonClient 方法没有调用 setPassword，配置后也不会生效。
          */
         private String password;
         /**

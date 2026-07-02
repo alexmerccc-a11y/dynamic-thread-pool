@@ -12,13 +12,27 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 @Configurable
+// 排除 RedissonAutoConfiguration，是为了避免业务测试应用自动创建默认 RedissonClient，
+// 让动态线程池 starter 使用自己命名的 dynamicThreadRedissonClient。
 @SpringBootApplication(exclude = {RedissonAutoConfiguration.class})
 public class Application {
 
+    /**
+     * 测试应用启动入口。
+     *
+     * <p>它模拟一个真实业务系统：业务系统声明线程池 Bean，引入 starter 后，
+     * starter 自动发现这些线程池并上报/调整。</p>
+     */
     public static void main(String[] args) {
         SpringApplication.run(Application.class);
     }
 
+    /**
+     * 应用启动后持续向 threadPoolExecutor01 提交任务。
+     *
+     * <p>这样管理端页面能看到 activeCount、queueSize 等指标不断变化，
+     * 便于观察动态调整 corePoolSize / maximumPoolSize 后的效果。</p>
+     */
     @Bean
     public ApplicationRunner applicationRunner(ExecutorService threadPoolExecutor01) {
         return args -> {
@@ -45,6 +59,7 @@ public class Application {
                     }
                 });
 
+                // 控制提交速度。随机短暂休眠可以制造不稳定流量，更接近真实业务的波动。
                 Thread.sleep(random.nextInt(50) + 1);
             }
         };

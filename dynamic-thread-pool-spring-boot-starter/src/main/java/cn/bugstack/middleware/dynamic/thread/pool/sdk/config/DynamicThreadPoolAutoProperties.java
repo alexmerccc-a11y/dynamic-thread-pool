@@ -3,36 +3,48 @@ package cn.bugstack.middleware.dynamic.thread.pool.sdk.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * @author Fuzhengwei bugstack.cn @小傅哥
- * @description 动态线程池配置
+
+ * @description 动态线程池 starter 的配置属性对象
+ *
+ * <p>{@link ConfigurationProperties} 会把配置文件里的
+ * {@code dynamic.thread.pool.config.*} 绑定到本类字段。
+ * 例如 {@code dynamic.thread.pool.config.host} 会绑定到 {@link #host}。</p>
+ *
+ * <p>初学者可以把这个类理解成“配置文件在 Java 代码里的接收器”：
+ * yml 写的是字符串和数字，Spring 启动时会自动转成这个 Java 对象。</p>
  * @create 2024-05-12 16:23
  */
 @ConfigurationProperties(prefix = "dynamic.thread.pool.config", ignoreInvalidFields = true)
 public class DynamicThreadPoolAutoProperties {
 
-    /** 状态；open = 开启、close 关闭 */
+    /**
+     * 动态线程池开关。
+     *
+     * <p>注意：当前代码只是声明了这个字段，还没有用 @ConditionalOnProperty
+     * 或 if 判断控制 starter 是否启用。</p>
+     */
     private boolean enable;
-    /** redis host */
+    /** Redis 主机地址，例如 127.0.0.1。 */
     private String host;
-    /** redis port */
+    /** Redis 端口，例如 6379。 */
     private int port;
-    /** 账密 */
+    /** Redis 密码；没有密码时通常为空。 */
     private String password;
-    /** 设置连接池的大小，默认为64 */
+    /** Redisson 连接池大小，默认 64。 */
     private int poolSize = 64;
-    /** 设置连接池的最小空闲连接数，默认为10 */
+    /** Redisson 最小空闲连接数，默认 10。 */
     private int minIdleSize = 10;
-    /** 设置连接的最大空闲时间（单位：毫秒），超过该时间的空闲连接将被关闭，默认为10000 */
+    /** 连接最大空闲时间，单位毫秒，超过后空闲连接会被关闭。 */
     private int idleTimeout = 10000;
-    /** 设置连接超时时间（单位：毫秒），默认为10000 */
+    /** 建立连接的超时时间，单位毫秒。 */
     private int connectTimeout = 10000;
-    /** 设置连接重试次数，默认为3 */
+    /** 连接失败后的重试次数。 */
     private int retryAttempts = 3;
-    /** 设置连接重试的间隔时间（单位：毫秒），默认为1000 */
+    /** 两次连接重试之间的间隔，单位毫秒。 */
     private int retryInterval = 1000;
-    /** 设置定期检查连接是否可用的时间间隔（单位：毫秒），默认为0，表示不进行定期检查 */
+    /** 定期检查连接是否可用的间隔，单位毫秒；0 表示不主动检查。 */
     private int pingInterval = 0;
-    /** 设置是否保持长连接，默认为true */
+    /** 是否保持 TCP 长连接。 */
     private boolean keepAlive = true;
 
     public boolean isEnable() {

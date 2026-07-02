@@ -18,17 +18,27 @@ import java.util.List;
 @RequestMapping("/api/v1/dynamic/thread/pool/")
 public class DynamicThreadPoolController {
 
+    /**
+     * 管理端的 Redis 客户端。
+     *
+     * <p>Controller 不直接访问业务应用。它只读 Redis 中的线程池状态，或者往 Redis Topic 发消息。</p>
+     */
     @Resource
     public RedissonClient redissonClient;
 
     /**
      * 查询线程池数据
+     *
+     * <p>读取的是 starter 定时任务写入的 Redis List：THREAD_POOL_CONFIG_LIST_KEY。
+     * 这个接口通常给首页表格使用。</p>
+     *
      * curl --request GET \
      * --url 'http://localhost:8089/api/v1/dynamic/thread/pool/query_thread_pool_list'
      */
     @RequestMapping(value = "query_thread_pool_list", method = RequestMethod.GET)
     public Response<List<ThreadPoolConfigEntity>> queryThreadPoolList() {
         try {
+            // 这里的 key 必须和 starter 中 RegistryEnumVO.THREAD_POOL_CONFIG_LIST_KEY 保持一致。
             RList<ThreadPoolConfigEntity> cacheList = redissonClient.getList("THREAD_POOL_CONFIG_LIST_KEY");
             return Response.<List<ThreadPoolConfigEntity>>builder()
                     .code(Response.Code.SUCCESS.getCode())
@@ -46,12 +56,17 @@ public class DynamicThreadPoolController {
 
     /**
      * 查询线程池配置
+     *
+     * <p>读取的是 starter 上报的单个线程池配置：
+     * THREAD_POOL_CONFIG_PARAMETER_LIST_KEY_{appName}_{threadPoolName}。</p>
+     *
      * curl --request GET \
-     * --url 'http://localhost:8089/api/v1/dynamic/thread/pool/query_thread_pool_config?appName=dynamic-thread-pool-test-app&threadPoolName=threadPoolExecutor'
+     * --url 'http://localhost:8089/api/v1/dynamic/thread/pool/query_thread_pool_config?appName=dynamic-thread-pool-test-app&threadPoolName=threadPoolExecutor01'
      */
     @RequestMapping(value = "query_thread_pool_config", method = RequestMethod.GET)
     public Response<ThreadPoolConfigEntity> queryThreadPoolConfig(@RequestParam String appName, @RequestParam String threadPoolName) {
         try {
+            // appName 区分应用，threadPoolName 区分这个应用里的具体线程池。
             String cacheKey = "THREAD_POOL_CONFIG_PARAMETER_LIST_KEY" + "_" + appName + "_" + threadPoolName;
             ThreadPoolConfigEntity threadPoolConfigEntity = redissonClient.<ThreadPoolConfigEntity>getBucket(cacheKey).get();
             return Response.<ThreadPoolConfigEntity>builder()
@@ -70,12 +85,16 @@ public class DynamicThreadPoolController {
 
     /**
      * 修改线程池配置
+     *
+     * <p>这个接口不直接修改线程池，因为线程池在业务应用进程里。
+     * 它只负责往 Redis Topic 发布一条消息，真正的修改由业务应用里的 ThreadPoolConfigAdjustListener 完成。</p>
+     *
      * curl --request POST \
      * --url http://localhost:8089/api/v1/dynamic/thread/pool/update_thread_pool_config \
      * --header 'content-type: application/json' \
      * --data '{
      * "appName":"dynamic-thread-pool-test-app",
-     * "threadPoolName": "threadPoolExecutor",
+     * "threadPoolName": "threadPoolExecutor01",
      * "corePoolSize": 1,
      * "maximumPoolSize": 10
      * }'
@@ -84,7 +103,10 @@ public class DynamicThreadPoolController {
     public Response<Boolean> updateThreadPoolConfig(@RequestBody ThreadPoolConfigEntity request) {
         try {
             log.info("修改线程池配置开始 {} {} {}", request.getAppName(), request.getThreadPoolName(), JSON.toJSONString(request));
+            // Topic 名称要带 appName，这样只会通知目标应用，避免误改其他应用的线程池。
             RTopic topic = redissonClient.getTopic("DYNAMIC_THREAD_POOL_REDIS_TOPIC" + "_" + request.getAppName());
+
+            // 发布后，订阅了这个 Topic 的业务应用会收到 ThreadPoolConfigEntity，并调整本地线程池。
             topic.publish(request);
             log.info("修改线程池配置完成 {} {}", request.getAppName(), request.getThreadPoolName());
             return Response.<Boolean>builder()
