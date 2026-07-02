@@ -1,12 +1,11 @@
 package cn.bugstack.middleware.dynamic.thread.pool.trigger;
 
+import cn.bugstack.middleware.dynamic.thread.pool.sdk.domain.DynamicThreadPoolService;
 import cn.bugstack.middleware.dynamic.thread.pool.sdk.domain.model.entity.ThreadPoolConfigEntity;
 import cn.bugstack.middleware.dynamic.thread.pool.types.Response;
 import com.alibaba.fastjson.JSON;
 import lombok.extern.slf4j.Slf4j;
-import org.redisson.api.RList;
-import org.redisson.api.RTopic;
-import org.redisson.api.RedissonClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -18,13 +17,8 @@ import java.util.List;
 @RequestMapping("/api/v1/dynamic/thread/pool/")
 public class DynamicThreadPoolController {
 
-    /**
-     * 管理端的 Redis 客户端。
-     *
-     * <p>Controller 不直接访问业务应用。它只读 Redis 中的线程池状态，或者往 Redis Topic 发消息。</p>
-     */
-    @Resource
-    public RedissonClient redissonClient;
+    @Autowired
+    private DynamicThreadPoolService dynamicThreadPoolService;
 
     /**
      * 查询线程池数据
@@ -39,11 +33,10 @@ public class DynamicThreadPoolController {
     public Response<List<ThreadPoolConfigEntity>> queryThreadPoolList() {
         try {
             // 这里的 key 必须和 starter 中 RegistryEnumVO.THREAD_POOL_CONFIG_LIST_KEY 保持一致。
-            RList<ThreadPoolConfigEntity> cacheList = redissonClient.getList("THREAD_POOL_CONFIG_LIST_KEY");
             return Response.<List<ThreadPoolConfigEntity>>builder()
                     .code(Response.Code.SUCCESS.getCode())
                     .info(Response.Code.SUCCESS.getInfo())
-                    .data(cacheList.readAll())
+                    .data(dynamicThreadPoolService.queryThreadPoolList())
                     .build();
         } catch (Exception e) {
             log.error("查询线程池数据异常", e);
@@ -68,7 +61,7 @@ public class DynamicThreadPoolController {
         try {
             // appName 区分应用，threadPoolName 区分这个应用里的具体线程池。
             String cacheKey = "THREAD_POOL_CONFIG_PARAMETER_LIST_KEY" + "_" + appName + "_" + threadPoolName;
-            ThreadPoolConfigEntity threadPoolConfigEntity = redissonClient.<ThreadPoolConfigEntity>getBucket(cacheKey).get();
+            ThreadPoolConfigEntity threadPoolConfigEntity = dynamicThreadPoolService.queryThreadPoolConfigByName(threadPoolName);
             return Response.<ThreadPoolConfigEntity>builder()
                     .code(Response.Code.SUCCESS.getCode())
                     .info(Response.Code.SUCCESS.getInfo())
@@ -104,10 +97,10 @@ public class DynamicThreadPoolController {
         try {
             log.info("修改线程池配置开始 {} {} {}", request.getAppName(), request.getThreadPoolName(), JSON.toJSONString(request));
             // Topic 名称要带 appName，这样只会通知目标应用，避免误改其他应用的线程池。
-            RTopic topic = redissonClient.getTopic("DYNAMIC_THREAD_POOL_REDIS_TOPIC" + "_" + request.getAppName());
+
 
             // 发布后，订阅了这个 Topic 的业务应用会收到 ThreadPoolConfigEntity，并调整本地线程池。
-            topic.publish(request);
+            dynamicThreadPoolService.updateThreadPoolConfig(request);
             log.info("修改线程池配置完成 {} {}", request.getAppName(), request.getThreadPoolName());
             return Response.<Boolean>builder()
                     .code(Response.Code.SUCCESS.getCode())

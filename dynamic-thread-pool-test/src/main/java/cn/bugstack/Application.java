@@ -1,6 +1,5 @@
 package cn.bugstack;
 
-import org.redisson.spring.starter.RedissonAutoConfiguration;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.SpringApplication;
@@ -14,7 +13,7 @@ import java.util.concurrent.TimeUnit;
 @Configurable
 // 排除 RedissonAutoConfiguration，是为了避免业务测试应用自动创建默认 RedissonClient，
 // 让动态线程池 starter 使用自己命名的 dynamicThreadRedissonClient。
-@SpringBootApplication(exclude = {RedissonAutoConfiguration.class})
+@SpringBootApplication
 public class Application {
 
     /**
@@ -28,13 +27,13 @@ public class Application {
     }
 
     /**
-     * 应用启动后持续向 threadPoolExecutor01 提交任务。
+     * 应用启动后持续向 threadPoolExecutor02 提交任务。
      *
      * <p>这样管理端页面能看到 activeCount、queueSize 等指标不断变化，
      * 便于观察动态调整 corePoolSize / maximumPoolSize 后的效果。</p>
      */
     @Bean
-    public ApplicationRunner applicationRunner(ExecutorService threadPoolExecutor01) {
+    public ApplicationRunner applicationRunner(ExecutorService threadPoolExecutor02) {
         return args -> {
             while (true){
                 // 创建一个随机时间生成器
@@ -45,7 +44,7 @@ public class Application {
                 int sleepTime = random.nextInt(10) + 1; // 1到10秒之间
 
                 // 提交任务到线程池
-                threadPoolExecutor01.submit(() -> {
+                threadPoolExecutor02.submit(() -> {
                     try {
                         // 模拟任务启动延迟
                         TimeUnit.SECONDS.sleep(initialDelay);

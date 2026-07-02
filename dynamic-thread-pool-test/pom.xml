@@ -52,9 +52,10 @@
         <!-- 线程组件 -->
         <dependency>
             <groupId>cn.bugstack.middleware</groupId>
-            <artifactId>dynamic-thread-pool-spring-boot-starter</artifactId>
+            <artifactId>dynamic-thread-pool-admin</artifactId>
             <version>1.0</version>
         </dependency>
+
     </dependencies>
 
     <build>
